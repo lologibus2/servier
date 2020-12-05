@@ -1,6 +1,7 @@
 import time
 
 import pandas as pd
+import numpy as np
 from sklearn.metrics import (roc_auc_score, f1_score, precision_score,
                              recall_score,
                              confusion_matrix, classification_report)
@@ -52,6 +53,7 @@ def simple_time_tracker(method):
     """
     decorator to measure execution time of a function
     """
+
     def timed(*args, **kw):
         ts = time.time()
         result = method(*args, **kw)
@@ -86,3 +88,11 @@ def describe_df(df):
                 .to_json(),
         ]
     return res.T
+
+
+def get_class_weights(y):
+    (unique, counts) = np.unique(y, return_counts=True)
+    d = {}
+    for k, v in zip(unique, counts):
+        d[k] = round(v / len(y), 2)
+    return d
