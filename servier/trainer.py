@@ -38,8 +38,9 @@ class Trainer(object):
         :param y:
         :param kwargs:
         """
-        self.pipeline = None
         self.kwargs = kwargs
+        self.estimator = self.kwargs.get("estimator", "RandomForest")
+        self.pipeline = None
         self.gridsearch = kwargs.get("gridsearch", False)  # apply gridsearch if True
         self.local = kwargs.get("local", True)  # if True training is done locally
         self.optimize = kwargs.get("optimize", False)  # Optimizes size of Training Data if set to True
@@ -53,7 +54,7 @@ class Trainer(object):
         self.X_train = X
         self.y_train = y
         del X, y
-        self.split = self.kwargs.get("split", True)  # cf doc above
+        self.split = self.kwargs.get("split", True) #if self.estimator != 'NN' else False
         self.resample = self.kwargs.get("resample", False)
         self.w = get_class_weights(self.y_train)
         if self.split:
@@ -67,7 +68,7 @@ class Trainer(object):
         Defines set of parameters to tune if Gridsearch parmaeter is set to True,
         :return:
         """
-        estimator = self.kwargs.get("estimator", "RandomForest")
+        estimator = self.estimator
         n_jobs = self.kwargs.get("n_jobs", 4)
         print(n_jobs)
         if estimator == "GBM":
@@ -85,8 +86,8 @@ class Trainer(object):
                                  'n_estimators': [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]}
             # 'max_depth' : [int(x) for x in np.linspace(10, 110, num = 11)]}
         elif estimator == "NN":
-            model = KerasClassifier(get_model,size=self.fp_size, batch_size=10, epochs=100, shuffle=True, class_weight=self.w,
-                                    verbose=1, validation_data=(self.X_val, self.y_val))
+            model = KerasClassifier(get_model, size=self.fp_size, batch_size=10, epochs=self.kwargs.get('epochs', 20), shuffle=True, class_weight=self.w,
+                                    verbose=1, validation_split=0.1)
         else:
             model = SGDClassifier()
         estimator_params = self.kwargs.get("estimator_params", {})
@@ -164,10 +165,8 @@ class Trainer(object):
         :return:
         """
         self.metrics_train = self.compute_metric(self.X_train, self.y_train)
-        self.log_dict_metric(self.metrics_train, suff="train")
         if self.split:
             self.metrics_val = self.compute_metric(self.X_val, self.y_val, show=False)
-            self.log_dict_metric(self.metrics_val, suff="val")
             print(colored(
                 "f1-score_train: {} || f1-score_val: {}".format(self.metrics_train["f1"], self.metrics_val["f1"]),
                 "blue"))
@@ -224,12 +223,21 @@ class Trainer(object):
         """Save the model into a .joblib and upload it on Google Storage /models folder
         HINTS : use sklearn.joblib (or jbolib) libraries and google-cloud-storage"""
         f1_score = round(self.metrics_val["f1"], 4)
-        name = self.kwargs.get("estimator")
-        model_name = f"{name}_t{self.kwargs['target']}_{self.nrows}_{self.n_reduced_dim}_{f1_score}.joblib"
-        if self.local:
-            model_local = LOCAL_PATH + "/models/" + model_name
-        joblib.dump(self.pipeline, model_local)
-        print(colored(f"{model_local.split('/')[-1]} saved locally", "green"))
+        name = self.estimator
+        model_path = LOCAL_PATH + "/models/"
+        if name == 'NN':
+            # Save the Keras model first:
+            self.pipeline.named_steps['clf'].model.save(model_path+'keras_model.h5')
+
+            # This hack allows us to save the sklearn pipeline:
+            self.pipeline.named_steps['clf'].model = None
+
+            # Finally, save the pipeline:
+            joblib.dump(self.pipeline, model_path+'sklearn_pipeline.joblib')
+        else:
+            model_name = f"{name}_t{self.kwargs['target']}_{self.nrows}_{self.n_reduced_dim}_{f1_score}.joblib"
+            joblib.dump(self.pipeline, model_path+model_name)
+        print(colored(f"model saved locally", "green"))
 
 
 # TODO : train locally to test
@@ -241,6 +249,7 @@ if __name__ == "__main__":
     params = dict(fp_size=1024,
                   local=True,  # set to False to get data from GCP (Storage or BigQuery)
                   estimator="NN",
+                  epochs=3,
                   gridsearch=False,
                   optimize=True,
                   feature_selection=False,
