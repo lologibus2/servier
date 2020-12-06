@@ -14,3 +14,7 @@ sklearn
 termcolor
 keras
 tensorflow
+
+flask
+flask-cors
+streamlit

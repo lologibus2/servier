@@ -6,6 +6,6 @@ dist/
 .coverage
 .ipynb_checkpoints
 *.iml
-groupama/data/base_pno.*
+servier/data/models/*
 .DS_Store
 .idea/

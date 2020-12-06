@@ -222,28 +222,25 @@ class Trainer(object):
     def save_model(self, upload=True, auto_remove=True):
         """Save the model into a .joblib and upload it on Google Storage /models folder
         HINTS : use sklearn.joblib (or jbolib) libraries and google-cloud-storage"""
-        f1_score = round(self.metrics_val["f1"], 4)
-        name = self.estimator
+        f1_score, auc = round(self.metrics_val["f1"], 4), round(self.metrics_val["ROC"], 4),
         model_path = LOCAL_PATH + "/models/"
-        if name == 'NN':
+        if self.estimator == 'NN':
+            id = f'{f1_score}_{auc}'
+            model = model_path+'keras_model'+'-'+id+'.h5'
+            pipeline = model_path+'keras_pipeline'+'-'+id+'.joblib'
             # Save the Keras model first:
-            self.pipeline.named_steps['clf'].model.save(model_path+'keras_model.h5')
-
+            self.pipeline.named_steps['clf'].model.save(model)
             # This hack allows us to save the sklearn pipeline:
             self.pipeline.named_steps['clf'].model = None
-
             # Finally, save the pipeline:
-            joblib.dump(self.pipeline, model_path+'sklearn_pipeline.joblib')
+            joblib.dump(self.pipeline, pipeline)
         else:
             model_name = f"{name}_t{self.kwargs['target']}_{self.nrows}_{self.n_reduced_dim}_{f1_score}.joblib"
             joblib.dump(self.pipeline, model_path+model_name)
         print(colored(f"model saved locally", "green"))
 
 
-# TODO : train locally to test
-# TODO: Train model on bigger machine
-
-if __name__ == "__main__":
+if "__main__" == __name__:
     test = True
     warnings.simplefilter(action='ignore', category=FutureWarning)
     params = dict(fp_size=1024,
