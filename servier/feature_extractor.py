@@ -2,7 +2,7 @@ from rdkit.Chem import rdMolDescriptors, MolFromSmiles, rdmolfiles, rdmolops
 import pandas as pd
 
 
-def fingerprint_features(smile_string, radius=2, size=2048):
+def fingerprint_features(smile_string, radius=3, size=2048):
     """
     :param smile_string:
     :param radius: no default value, usually set 2 for similarity search and 3 for machine learning

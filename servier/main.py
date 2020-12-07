@@ -4,6 +4,9 @@ import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.feature_extraction.text import CountVectorizer
+
+
 from servier.plot import plot_confusion_wiki
 from sklearn.decomposition import PCA
 from sklearn.ensemble import GradientBoostingClassifier
@@ -79,12 +82,7 @@ class Trainer(object):
         elif estimator == "RandomForest":
             model = RandomForestClassifier()
             self.model_params = {'bootstrap': [True, False],
-                                 'max_depth': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, None],
-                                 'max_features': ['auto', 'sqrt'],
-                                 'min_samples_leaf': [1, 2, 4],
-                                 'min_samples_split': [2, 5, 10],
-                                 'n_estimators': [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]}
-            # 'max_depth' : [int(x) for x in np.linspace(10, 110, num = 11)]}
+                                 'max_features': ['auto', 'sqrt']}
         elif estimator == "NN":
             model = KerasClassifier(get_model, size=self.fp_size, batch_size=10, epochs=self.kwargs.get('epochs', 20), shuffle=True, class_weight=self.w,
                                     verbose=1, validation_split=0.1)
@@ -98,16 +96,12 @@ class Trainer(object):
     def set_pipeline(self):
         """
         Sets Whole Workflow (Preprocessing + Feature Engineering + model)
-        Consists in 3 main steps:
-        - preprocessing : distinction between categorical | ordinal | numerical variable encoding
-        - feature selection : select most decisive features based of input parameters
-        - model
-        :return:
         """
-        pipeline_encoder = make_pipeline(MorganFingerprintEncoder(size=self.fp_size))
+        morgan_fp_encoder = make_pipeline(MorganFingerprintEncoder(size=self.fp_size))
+        cv_encoder = CountVectorizer(analyzer='char', lowercase=False)
 
         preprocessor = Pipeline(steps=[
-            ("feat_encoder", pipeline_encoder)])
+            ("feat_encoder", morgan_fp_encoder)])
 
         self.pipeline = Pipeline(steps=[
             ("preprocessing", preprocessor),
@@ -219,7 +213,7 @@ class Trainer(object):
             print(colored(res.sample(5), "blue"))
         return res
 
-    def save_model(self, upload=True, auto_remove=True):
+    def save_model(self, path=LOCAL_PATH, upload=True, auto_remove=True):
         """Save the model into a .joblib and upload it on Google Storage /models folder
         HINTS : use sklearn.joblib (or jbolib) libraries and google-cloud-storage"""
         f1_score, auc = round(self.metrics_val["f1"], 4), round(self.metrics_val["ROC"], 4),
@@ -235,7 +229,7 @@ class Trainer(object):
             # Finally, save the pipeline:
             joblib.dump(self.pipeline, pipeline)
         else:
-            model_name = f"{name}_t{self.kwargs['target']}_{self.nrows}_{self.n_reduced_dim}_{f1_score}.joblib"
+            model_name = f"{self.estimator}_{self.nrows}_{self.n_reduced_dim}_{f1_score}.joblib"
             joblib.dump(self.pipeline, model_path+model_name)
         print(colored(f"model saved locally", "green"))
 
@@ -244,11 +238,8 @@ if "__main__" == __name__:
     test = True
     warnings.simplefilter(action='ignore', category=FutureWarning)
     params = dict(fp_size=1024,
-                  local=True,  # set to False to get data from GCP (Storage or BigQuery)
                   estimator="NN",
-                  epochs=3,
-                  gridsearch=False,
-                  optimize=True,
+                  epochs=30,
                   feature_selection=False,
                   reduce_dim=False,
                   n_reduce_dim=100,
