@@ -13,5 +13,5 @@ setup(name='servier',
       test_suite = 'tests',
       # include_package_data: to install data from MANIFEST.in
       include_package_data=True,
-      scripts=['scripts/servier-run'],
+      scripts=['scripts/servier'],
       zip_safe=False)

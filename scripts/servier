@@ -1,27 +1,58 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import click
+from termcolor import colored
 
-# Import from the standard library
-from os.path import split
-import argparse
-import pandas as pd
+from servier.data import get_data, get_X_y
+from servier.main import Trainer
 
-# Import from servier
-import servier
-from servier.lib import clean_data
+
+@click.group()
+def ml_servier():
+    pass
+
+
+@click.command()
+@click.option('-a', '--aa')
+@click.option('-s', '--split', is_flag=True)
+def train(aa, split):
+    params = dict(fp_size=1024,
+                  split=split,
+                  estimator="NN",
+                  epochs=30,
+                  gridsearch=False,
+                  resample=False,
+                  n_jobs=-1)
+    print("############   Loading Data   ############")
+    params["local"] = True
+    df = get_data(**params)
+    X_train, y_train = get_X_y(df)
+    print("shape: {}".format(X_train.shape))
+    print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
+    # Train and save model, locally and
+    t = Trainer(X=X_train, y=y_train, **params)
+    del X_train, y_train
+    print(colored("############  Training model   ############", "red"))
+    t.train()
+    print(colored("############  Evaluating model ############", "blue"))
+    t.evaluate()
+    print(colored("############   Saving model    ############", "green"))
+    t.save_model()
+
+
+@click.command()
+def evaluate():
+    click.echo('Welcome')
+
+@click.command()
+def predict():
+    click.echo('Welcome')
+
+
+ml_servier.add_command(train)
+ml_servier.add_command(evaluate)
+
 
 if __name__ == '__main__':
-    usage = '%(prog)s'
-    description = 'servier_description'
-    # https://docs.python.org/3/library/argparse.html
-    # https://docs.python.org/3/howto/argparse.html
-    parser = argparse.ArgumentParser(description=description, usage=usage)
-    args = parser.parse_args()
-    folder_source, _ = split(servier.__file__)
-    df = pd.read_csv('{}/data/data.csv.gz'.format(folder_source))
-    print('  servier/data/data.csv.gz Loaded')
+    ml_servier()
 
-    res = clean_data(df)
-    res.to_csv('out.csv', index=False)
-    print('==> out.csv MADE ')
-    print('    shape is {}'.format(res.shape))

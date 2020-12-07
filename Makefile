@@ -48,6 +48,15 @@ count_lines:
 	@echo ''
 
 # ----------------------------------
+#     	DOCKER CMD
+# ----------------------------------
+clean_images:
+	-@docker stop $$(docker ps -a -q)
+	-@docker rm $$(docker ps -a -q)
+	-@docker volume rm $$(docker volume ls -qf dangling=true)
+	-@docker image rm $$(docker image ls -qf dangling=true)
+
+# ----------------------------------
 #      UPLOAD PACKAGE TO PYPI
 # ----------------------------------
 build:
