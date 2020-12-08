@@ -168,6 +168,7 @@ class Trainer(object):
         Evaluates the model on validation or test set
         :return:
         """
+        test = self.kwargs.get("infer", False)
         self.metrics_train = self.compute_metric(self.X_train, self.y_train)
         if self.split:
             self.metrics_val = self.compute_metric(self.X_val, self.y_val, show=False)
@@ -178,8 +179,12 @@ class Trainer(object):
                 "AUC-score_train: {} || AUC-score_val: {}".format(self.metrics_train["ROC"], self.metrics_val["ROC"]),
                 "blue"))
         else:
-            print(colored("f1-score_train: {}".format(self.metrics_train["f1"]), "blue"))
-            print(colored("AUC-score_train: {}".format(self.metrics_train["ROC"]), "blue"))
+            if test:
+                print(colored("f1-score_test: {}".format(self.metrics_train["f1"]), "blue"))
+                print(colored("AUC-score_test: {}".format(self.metrics_train["ROC"]), "blue"))
+            else:
+                print(colored("f1-score_train: {}".format(self.metrics_train["f1"]), "blue"))
+                print(colored("AUC-score_train: {}".format(self.metrics_train["ROC"]), "blue"))
 
     def get_proba(self):
         self.proba_train = self.compute_proba(self.X_train, self.y_train)
@@ -253,50 +258,29 @@ class Trainer(object):
 if "__main__" == __name__:
     test = True
     warnings.simplefilter(action='ignore', category=FutureWarning)
-    #params = dict(fp_size=2048,
-    #              estimator="NN",
-    #              model='mlp',
-    #              epochs=30,
-    #              batch_size=32,
-    #              n_reduce_dim=100,
-    #              resample=False,
-    #              n_jobs=-1)
-    #l_params = [params]
-    ## Get and clean data
-    #print("############   Loading Data   ############")
-    #l_params[0]["local"] = True
-    #df = get_data(**l_params[0])
-    #for run_params in l_params:
-    #    X_train, y_train = get_X_y(df)
-    #    print("shape: {}".format(X_train.shape))
-    #    print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
-    #    # Train and save model, locally and
-    #    t = Trainer(X=X_train, y=y_train, **run_params)
-    #    del X_train, y_train
-    #    print(colored("############  Training model   ############", "red"))
-    #    t.train()
-    #    print(colored("############  Evaluating model ############", "blue"))
-    #    t.evaluate()
-    #    print(colored("############   Saving model    ############", "green"))
-    #    t.save_model()
-
-    #params = dict(split=False,
-    #              infer=True,
-    #              model_type=0
-    #              )
-    #df = get_data(test=True)
-    #X_test, y_test = get_X_y(df)
-    #l_model_paths = get_pipeline_model_from_path(archi='mlp')
-    #for model_paths in l_model_paths:
-    #    print(model_paths)
-    #    evaluator = Trainer(X=X_test, y=y_test, model_paths=model_paths, **params)
-    #    evaluator.evaluate()
-
-    params = dict(split=False,
-                  infer=True,
-                  model_type=1
-                  )
-    df = get_data(test=True)
-    X_test, y_test = get_X_y(df)
-    evaluator = Trainer(X=X_test, y=y_test, **params)
-    evaluator.evaluate()
+    params = dict(fp_size=2048,
+                  estimator="NN",
+                  model='mlp',
+                  epochs=30,
+                  batch_size=32,
+                  n_reduce_dim=100,
+                  resample=False,
+                  n_jobs=-1)
+    l_params = [params]
+    # Get and clean data
+    print("############   Loading Data   ############")
+    l_params[0]["local"] = True
+    df = get_data(**l_params[0])
+    for run_params in l_params:
+        X_train, y_train = get_X_y(df)
+        print("shape: {}".format(X_train.shape))
+        print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
+        # Train and save model, locally and
+        t = Trainer(X=X_train, y=y_train, **run_params)
+        del X_train, y_train
+        print(colored("############  Training model   ############", "red"))
+        t.train()
+        print(colored("############  Evaluating model ############", "blue"))
+        t.evaluate()
+        print(colored("############   Saving model    ############", "green"))
+        t.save_model()

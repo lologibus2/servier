@@ -3,9 +3,13 @@
 import click
 from termcolor import colored
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 from servier.data import get_data, get_X_y, LOCAL_PATH
 from servier.main import Trainer
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
 
 @click.group()
@@ -24,13 +28,13 @@ def train(split, model, archi, data_path):
                   split=split,
                   estimator="NN",
                   model=dl_archi,
-                  epochs=30,
+                  epochs=15,
                   gridsearch=False,
                   resample=False,
                   n_jobs=-1)
     print("############   Loading Data   ############")
     params["local"] = True
-    df = get_data(path=data_path,**params)
+    df = get_data(path=data_path, **params)
     X_train, y_train = get_X_y(df)
     print("shape: {}".format(X_train.shape))
     print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
@@ -60,6 +64,7 @@ def evaluate(model, archi, data_path):
     evaluator = Trainer(X=X_test, y=y_test, **params)
     evaluator.evaluate()
 
+
 @click.command()
 def predict():
     click.echo('Welcome')
@@ -68,7 +73,5 @@ def predict():
 ml_servier.add_command(train)
 ml_servier.add_command(evaluate)
 
-
 if __name__ == '__main__':
     ml_servier()
-

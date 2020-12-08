@@ -38,16 +38,35 @@ Install package:
   make install clean
 ```
 
-Test Script:
+Scripts:
 ```bash
   cd /tmp
-  servier train --model 1 --archi cnn
+  servier train --model 1 -a mlp --split -p {PATH_TO_REPO}/servier/servier/data
+  ls /tmp/models
+```
+```bash
+  servier evaluate --model 1 -p {PATH_TO_REPO}/servier/servier/data
 ```
 
 # API and streamlit app
 Each API and streamlit app has been deployed on Heroku:  
-    🚀 Find the API 👉 [here](https://servier-api.herokuapp.com/)  
-    🚀 And the streanlit app 👉 [There](https://servier-streamlit.herokuapp.com/)
+ - Find the API 👉 [here](https://servier-api.herokuapp.com/)  (please click to wake heroku up)
+ - And the streanlit app 👉 [There](https://servier-streamlit.herokuapp.com/)
+ 
+Test api with this code snippet:
+```python 
+from servier.data import get_data
+import requests
+
+data_path = 'PATH_TO_REPO/servier/servier/data/'
+api_url = "https://servier-api.herokuapp.com/"
+
+df = get_data(path=data_path)
+instances = df.drop("P1", axis=1).to_dict(orient="records")
+
+
+print(r.json())
+```
  
 ## Locally
 API:
