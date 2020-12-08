@@ -18,6 +18,38 @@ $ conda create -y --name servier python=3.6
 $ activate servier
 $ conda install -c conda-forge rdkit
 ```
+# Project Structure
+```bash
+├── Dockerfile
+├── MANIFEST.in
+├── Makefile                               ==> cookbook for reproducibility ;)
+├── README.md
+├── deploy                                  
+│   ├── api.py                             ==> flask API 
+│   └── streamlit_app.py                   ==> Streamlit APP
+├── docker
+│   ├── Dockerfile.api                     ==> Docker for API deployment
+│   └── Dockerfile.streamlit               ==> Docker for Streamlit deployment
+├── requirements.txt
+├── scripts
+│   └── servier
+├── servier                                 ==> python servier package
+│   ├── __init__.py                         
+│   ├── data/...                            ==> data and final models
+│   ├── data.py
+│   ├── dl.py
+│   ├── encoders.py                         ==> custom sklearn Pipeline encoders
+│   ├── feature_extractor.py                
+│   ├── jupy/...                            ==> exploratory notebooks
+│   ├── main.py                             ==> main trainer|evaluator|predictor class
+│   ├── plot.py
+│   └── utils.py
+├── setup.py                                ==> keystone for packaging
+├── setup.sh                                ==> only here for streamlit docker deployment on Heroku
+└── tests                                   ==> test directory (to implement with more time)
+    ├── __init__.py
+    └── lib_test.py
+```
 
 # Install
 Go to `github.com/lologibus2/servier` to see the project
