@@ -1,13 +1,16 @@
+import os
+
 import pandas as pd
 from flask import Flask
 from flask import request
 from flask_cors import CORS
 
-from servier.data import model_load
+from servier.data import load_final_model
 
 app = Flask(__name__)
 CORS(app)
 
+port = int(os.environ.get("PORT", 8080))
 PATH_TO_MODEL = "./servier/data/final_models/"
 
 COLS = ['mol_id',
@@ -21,7 +24,7 @@ def format_input(input):
     return formated_input
 
 
-pipeline_def = {'pipeline': model_load(PATH_TO_MODEL, dl=True),
+pipeline_def = {'pipeline': load_final_model(PATH_TO_MODEL, dl=True),
                 'from_gcp': False}
 
 
@@ -65,4 +68,4 @@ def set_model():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    app.run(debug=True,host='0.0.0.0',port=port)

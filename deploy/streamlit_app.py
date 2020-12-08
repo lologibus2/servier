@@ -2,7 +2,7 @@ import joblib
 import pandas as pd
 import streamlit as st
 
-from servier.data import model_load
+from servier.data import load_final_model
 
 from rdkit import Chem
 from rdkit.Chem import Draw
@@ -24,7 +24,7 @@ def format_input(smile):
     return formated_input
 
 
-# pipeline_def = {'pipeline': model_load(PATH_TO_MODEL, dl=True),
+# pipeline_def = {'pipeline': load_final_model(PATH_TO_MODEL, dl=True),
 #                'from_gcp': False}
 
 
@@ -35,7 +35,7 @@ def main():
         st.markdown("**Have fun immplementing your own Taxifare Dataviz**")
 
     if analysis == "prediction":
-        pipeline = model_load(PATH_TO_MODEL, dl=True)
+        pipeline = load_final_model(PATH_TO_MODEL, dl=True)
         print("loaded model")
         st.header("SMILE Model predictions")
         # inputs from user
@@ -51,8 +51,5 @@ def main():
         st.write("💸 P1 property", res[0])
 
 
-# print(colored(proc.sf_query, "blue"))
-# proc.test_execute()
 if __name__ == "__main__":
-    # df = read_data()
     main()
