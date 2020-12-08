@@ -2,7 +2,7 @@
 #          INSTALL & TEST
 # ----------------------------------
 install_requirements:
-	@conda install --file requirements.txt
+	@pip install -r requirements.txt
 
 check_code:
 	@flake8 scripts/* servier/*.py
@@ -47,6 +47,13 @@ count_lines:
         '{printf "%4s %s\n", $$1, $$2}{s+=$$0}END{print s}'
 	@echo ''
 
+# ----------------------------------
+#     	  API & Streamlit
+# ----------------------------------
+streamlit_local:
+	@streamlit run deploy/streamlit_app.py
+api_local:
+	@python deploy/api.py
 # ----------------------------------
 #     	DOCKER CMD
 # ----------------------------------

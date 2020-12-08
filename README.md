@@ -24,28 +24,53 @@ Go to `github.com/lologibus2/servier` to see the project
 
 Activate conda env:
 ```bash
-  $ activate servier 
+  $ conda activate servier 
 ```
 
-Clone the project and install it:
+Clone the project and install requirements:
 ```bash
-  $ git clone github.com/lologibus2/servier
-  $ cd servier
-  $ pip install -r requirements.txt
-  $ make clean install
+  git clone git@github.com:lologibus2/servier.git
+  cd servier
+  pip install -r requirements.txt
 ```
 Install package:
 ```bash
-  $ make clean install
+  make install clean
 ```
 
 Test Script:
 ```bash
-  $ cd /tmp
-  $ servier train --model 1 --archi cnn
+  cd /tmp
+  servier train --model 1 --archi cnn
 ```
 
-#Model Architecture
+# API and streamlit app
+Each API and streamlit app has been deployed on Heroku:  
+    🚀 Find the API 👉 [here](https://servier-api.herokuapp.com/)  
+    🚀 And the streanlit app 👉 [There](https://servier-streamlit.herokuapp.com/)
+ 
+## Locally
+API:
+```bash
+  make api_local 
+```
+Streamlit app:
+```bash
+  make streamlit_local
+```
+## Docker
+API:
+```bash
+  make docker_build_api
+  make docker_run_api
+```
+Streamlit app:
+```bash
+  make docker_build_streamlit
+  make docker_run_streamlit
+```
+
+# Model Architecture
 👉 Both Model 1 and 2 are stored as sklearn pipeline objects and not directly models.  
  - The reason for that is to integrate both Preprocessing and model into final livrable    
  - Therefor both models take as an input original dataset, i.e smiles molecule representation
