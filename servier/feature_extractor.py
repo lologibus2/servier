@@ -27,8 +27,10 @@ def df_to_features(df, col='smiles', radius=2, size=2048, only_fingerprint=False
         fingerprint_vect = fingerprint_features(smile, radius=radius, size=size)
         vect_list.append(fingerprint_vect)
     df_morgan = pd.DataFrame(vect_list, columns=l_cols)
+    df.reset_index(drop=True, inplace=True)
+    df_morgan.reset_index(drop=True, inplace=True)
     if only_fingerprint:
-        df_final = df_morgan
+        df_final = df_morgan.astype('int8')
     else:
         df_final = pd.concat([df, df_morgan.astype('int8')], axis=1)
     return df_final

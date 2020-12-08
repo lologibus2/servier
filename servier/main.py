@@ -1,28 +1,23 @@
+import os
 import warnings
 
 import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.feature_extraction.text import CountVectorizer
-
-
-from servier.plot import plot_confusion_wiki
-from sklearn.decomposition import PCA
-from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import SelectKBest
 # Model choices here
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import plot_roc_curve
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
-from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from termcolor import colored
 
-from servier.data import get_data, get_X_y, LOCAL_PATH
-from servier.dl import get_model
-from servier.encoders import MorganFingerprintEncoder
+from servier.data import get_data, get_X_y, LOCAL_PATH, load_final_model, load_model_from_path, get_pipeline_model_from_path
+from servier.dl import mlp_model_2, cnn_model, rnn_model
+from servier.encoders import MorganFingerprintEncoder, TokenizerEncoder
+from servier.plot import plot_confusion_wiki
 from servier.utils import simple_time_tracker, perf_eval_classif, get_class_weights
 
 
@@ -43,26 +38,25 @@ class Trainer(object):
         """
         self.kwargs = kwargs
         self.estimator = self.kwargs.get("estimator", "RandomForest")
-        self.pipeline = None
+        self.model = self.kwargs.get("model", "cnn")
         self.gridsearch = kwargs.get("gridsearch", False)  # apply gridsearch if True
         self.local = kwargs.get("local", True)  # if True training is done locally
-        self.optimize = kwargs.get("optimize", False)  # Optimizes size of Training Data if set to True
+        self.get_pipeline()
         # Dimensionnality reduction
-        self.reduce_dim = kwargs.get("reduce_dim", False)
-        self.feature_selection = kwargs.get("feature_selection", False)
-        self.n_reduced_dim = kwargs.get("n_reduce_dim", 20)
         self.model_params = None  # for
         self.fp_size = kwargs.get("fp_size", 1024)
         # Data
         self.X_train = X
         self.y_train = y
         del X, y
-        self.split = self.kwargs.get("split", True) #if self.estimator != 'NN' else False
+        self.split = self.kwargs.get("split", True)  # if self.estimator != 'NN' else False
         self.resample = self.kwargs.get("resample", False)
         self.w = get_class_weights(self.y_train)
         if self.split:
             self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(self.X_train, self.y_train,
                                                                                   stratify=self.y_train, test_size=0.15)
+            if self.resample:
+                pass
         self.nrows = self.X_train.shape[0]  # nb of rows to train on
 
     def get_estimator(self):
@@ -73,10 +67,7 @@ class Trainer(object):
         """
         estimator = self.estimator
         n_jobs = self.kwargs.get("n_jobs", 4)
-        print(n_jobs)
-        if estimator == "GBM":
-            model = GradientBoostingClassifier()
-        elif estimator == "SVM":
+        if estimator == "SVM":
             svc_kernel = self.kwargs.get("svc_kernel", "linear")
             model = SVC(kernel=svc_kernel, C=1.0, class_weight='balanced', cache_size=1000)
         elif estimator == "RandomForest":
@@ -84,8 +75,20 @@ class Trainer(object):
             self.model_params = {'bootstrap': [True, False],
                                  'max_features': ['auto', 'sqrt']}
         elif estimator == "NN":
-            model = KerasClassifier(get_model, size=self.fp_size, batch_size=10, epochs=self.kwargs.get('epochs', 20), shuffle=True, class_weight=self.w,
-                                    verbose=1, validation_split=0.1)
+            m_args = dict(batch_size=self.kwargs.get('epochs', 10),
+                          epochs=self.kwargs.get('epochs', 20),
+                          shuffle=True,
+                          class_weight=self.w,
+                          verbose=1,
+                          validation_split=0.1,
+                          # callbacks=[EarlyStopping(monitor='val_loss', patience=5)]
+                          )
+            if self.model == 'rnn':
+                model = KerasClassifier(rnn_model, **m_args)
+            elif self.model == 'cnn':
+                model = KerasClassifier(cnn_model, **m_args)
+            elif self.model == 'mlp':
+                model = KerasClassifier(mlp_model_2, size=self.fp_size, **m_args)
         else:
             model = SGDClassifier()
         estimator_params = self.kwargs.get("estimator_params", {})
@@ -97,25 +100,32 @@ class Trainer(object):
         """
         Sets Whole Workflow (Preprocessing + Feature Engineering + model)
         """
-        morgan_fp_encoder = make_pipeline(MorganFingerprintEncoder(size=self.fp_size))
-        cv_encoder = CountVectorizer(analyzer='char', lowercase=False)
+        if self.model in ['cnn', 'rnn']:
+            encoder = TokenizerEncoder()
+        else:
+            encoder = MorganFingerprintEncoder(size=self.fp_size)
 
         preprocessor = Pipeline(steps=[
-            ("feat_encoder", morgan_fp_encoder)])
+            ("feat_encoder", encoder)])
 
         self.pipeline = Pipeline(steps=[
             ("preprocessing", preprocessor),
             ("clf", self.get_estimator())])
 
-        if self.feature_selection:
-            self.pipeline.named_steps["preprocessing"].steps.append(
-                ["feature_selection", SelectKBest(k=self.n_reduced_dim)])
-
-        if self.reduce_dim:
-            self.pipeline.named_steps["preprocessing"].steps.append(["pca", PCA(n_components=self.n_reduced_dim)])
-
-        # if self.optimize:
-        #    self.pipeline.steps.insert(-1, ['optimize_size', OptimizeSize(verbose=False)])
+    def get_pipeline(self):
+        """
+        Load pipeline for inference or evaluation
+        """
+        if self.kwargs.get("infer"):
+            model_paths = self.kwargs.get("model_paths", None)
+            if not model_paths:
+                self.model_type=self.kwargs.get("model_type", None)
+                self.pipeline = load_final_model(model=self.model_type)
+            else:
+                self.pipeline = load_model_from_path(path_pipeline=model_paths[0],
+                                                     path_model=model_paths[1])
+        else:
+            self.pipeline=None
 
     def add_grid_search(self):
         """"
@@ -155,7 +165,7 @@ class Trainer(object):
 
     def evaluate(self):
         """
-        Evaluates the model on validation set
+        Evaluates the model on validation or test set
         :return:
         """
         self.metrics_train = self.compute_metric(self.X_train, self.y_train)
@@ -214,14 +224,20 @@ class Trainer(object):
         return res
 
     def save_model(self, path=LOCAL_PATH, upload=True, auto_remove=True):
-        """Save the model into a .joblib and upload it on Google Storage /models folder
-        HINTS : use sklearn.joblib (or jbolib) libraries and google-cloud-storage"""
+        """
+        Saves model as a pipeline to keep preprocessing and model tight together
+        If DL is used:
+         - .joblib file for preprocessing
+         - .h5 file for model (weights)
+         """
         f1_score, auc = round(self.metrics_val["f1"], 4), round(self.metrics_val["ROC"], 4),
-        model_path = LOCAL_PATH + "/models/"
+        model_path = path + "/models/"
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
         if self.estimator == 'NN':
             id = f'{f1_score}_{auc}'
-            model = model_path+'keras_model'+'-'+id+'.h5'
-            pipeline = model_path+'keras_pipeline'+'-'+id+'.joblib'
+            model = model_path + 'keras_model_' + self.model + '-' + id + '.h5'
+            pipeline = model_path + 'keras_pipeline_' + self.model + '-' + id + '.joblib'
             # Save the Keras model first:
             self.pipeline.named_steps['clf'].model.save(model)
             # This hack allows us to save the sklearn pipeline:
@@ -230,36 +246,57 @@ class Trainer(object):
             joblib.dump(self.pipeline, pipeline)
         else:
             model_name = f"{self.estimator}_{self.nrows}_{self.n_reduced_dim}_{f1_score}.joblib"
-            joblib.dump(self.pipeline, model_path+model_name)
+            joblib.dump(self.pipeline, model_path + model_name)
         print(colored(f"model saved locally", "green"))
 
 
 if "__main__" == __name__:
     test = True
     warnings.simplefilter(action='ignore', category=FutureWarning)
-    params = dict(fp_size=1024,
-                  estimator="NN",
-                  epochs=30,
-                  feature_selection=False,
-                  reduce_dim=False,
-                  n_reduce_dim=100,
-                  resample=False,
-                  n_jobs=-1)
-    l_params = [params]
-    # Get and clean data
-    print("############   Loading Data   ############")
-    l_params[0]["local"] = True
-    df = get_data(**l_params[0])
-    for run_params in l_params:
-        X_train, y_train = get_X_y(df)
-        print("shape: {}".format(X_train.shape))
-        print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
-        # Train and save model, locally and
-        t = Trainer(X=X_train, y=y_train, **run_params)
-        del X_train, y_train
-        print(colored("############  Training model   ############", "red"))
-        t.train()
-        print(colored("############  Evaluating model ############", "blue"))
-        t.evaluate()
-        print(colored("############   Saving model    ############", "green"))
-        t.save_model()
+    #params = dict(fp_size=2048,
+    #              estimator="NN",
+    #              model='mlp',
+    #              epochs=30,
+    #              batch_size=32,
+    #              n_reduce_dim=100,
+    #              resample=False,
+    #              n_jobs=-1)
+    #l_params = [params]
+    ## Get and clean data
+    #print("############   Loading Data   ############")
+    #l_params[0]["local"] = True
+    #df = get_data(**l_params[0])
+    #for run_params in l_params:
+    #    X_train, y_train = get_X_y(df)
+    #    print("shape: {}".format(X_train.shape))
+    #    print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
+    #    # Train and save model, locally and
+    #    t = Trainer(X=X_train, y=y_train, **run_params)
+    #    del X_train, y_train
+    #    print(colored("############  Training model   ############", "red"))
+    #    t.train()
+    #    print(colored("############  Evaluating model ############", "blue"))
+    #    t.evaluate()
+    #    print(colored("############   Saving model    ############", "green"))
+    #    t.save_model()
+
+    #params = dict(split=False,
+    #              infer=True,
+    #              model_type=0
+    #              )
+    #df = get_data(test=True)
+    #X_test, y_test = get_X_y(df)
+    #l_model_paths = get_pipeline_model_from_path(archi='mlp')
+    #for model_paths in l_model_paths:
+    #    print(model_paths)
+    #    evaluator = Trainer(X=X_test, y=y_test, model_paths=model_paths, **params)
+    #    evaluator.evaluate()
+
+    params = dict(split=False,
+                  infer=True,
+                  model_type=1
+                  )
+    df = get_data(test=True)
+    X_test, y_test = get_X_y(df)
+    evaluator = Trainer(X=X_test, y=y_test, **params)
+    evaluator.evaluate()
