@@ -26,7 +26,7 @@ clean:
 	@rm -fr servier.egg-info
 
 install:
-	@pip install . -U
+	@pip install .
 
 all: clean install test black check_code
 
@@ -55,6 +55,18 @@ clean_images:
 	-@docker rm $$(docker ps -a -q)
 	-@docker volume rm $$(docker volume ls -qf dangling=true)
 	-@docker image rm $$(docker image ls -qf dangling=true)
+
+docker_build_api:
+	@docker build -f docker/Dockerfile.api -t servier-api .
+
+docker_run_api:
+	@docker run -d -p 8080:8080 servier-api
+
+docker_build_streamlit:
+	@docker build -f docker/Dockerfile.streamlit -t servier-streamlit .
+
+docker_run_streamlit:
+	@docker run -d -p 8501:8501 servier-streamlit
 
 # ----------------------------------
 #      UPLOAD PACKAGE TO PYPI

@@ -11,4 +11,4 @@ WORKDIR /app
 
 RUN pip install .
 
-CMD python -m servier.trainer
+CMD python deploy/api.py
