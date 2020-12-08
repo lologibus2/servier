@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 import click
 from termcolor import colored
-
-from servier.data import get_data, get_X_y
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+from servier.data import get_data, get_X_y, LOCAL_PATH
 from servier.main import Trainer
 
 
@@ -13,19 +14,23 @@ def ml_servier():
 
 
 @click.command()
-@click.option('-a', '--aa')
 @click.option('-s', '--split', is_flag=True)
-def train(aa, split):
+@click.option('-m', '--model', default=1)
+@click.option('-a', '--archi', default='mlp')
+@click.option('-p', '--data_path', default=LOCAL_PATH)
+def train(split, model, archi, data_path):
+    dl_archi = 'mlp' if model == 1 else archi
     params = dict(fp_size=1024,
                   split=split,
                   estimator="NN",
+                  model=dl_archi,
                   epochs=30,
                   gridsearch=False,
                   resample=False,
                   n_jobs=-1)
     print("############   Loading Data   ############")
     params["local"] = True
-    df = get_data(**params)
+    df = get_data(path=data_path,**params)
     X_train, y_train = get_X_y(df)
     print("shape: {}".format(X_train.shape))
     print("size: {} Mb".format(X_train.memory_usage().sum() / 1e6))
@@ -34,15 +39,26 @@ def train(aa, split):
     del X_train, y_train
     print(colored("############  Training model   ############", "red"))
     t.train()
-    print(colored("############  Evaluating model ############", "blue"))
-    t.evaluate()
+    if split:
+        print(colored("############  Evaluating model ############", "blue"))
+        t.evaluate()
     print(colored("############   Saving model    ############", "green"))
-    t.save_model()
+    t.save_model(path='.')
 
 
 @click.command()
-def evaluate():
-    click.echo('Welcome')
+@click.option('-m', '--model', default=1)
+@click.option('-a', '--archi', default='mlp')
+@click.option('-p', '--data_path', default=LOCAL_PATH)
+def evaluate(model, archi, data_path):
+    params = dict(split=False,
+                  infer=True,
+                  model_type=model
+                  )
+    df = get_data(test=True)
+    X_test, y_test = get_X_y(df)
+    evaluator = Trainer(X=X_test, y=y_test, **params)
+    evaluator.evaluate()
 
 @click.command()
 def predict():
