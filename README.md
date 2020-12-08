@@ -15,7 +15,7 @@ $ Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda
 $ export PATH=~/miniconda/bin:$PATH
 $ conda update -n base conda
 $ conda create -y --name servier python=3.6
-$ activate servier
+$ conda activate servier
 $ conda install -c conda-forge rdkit
 ```
 # Project Structure
@@ -73,11 +73,11 @@ Install package:
 Scripts:
 ```bash
   cd /tmp
-  servier train --model 1 -a mlp --split -p {PATH_TO_REPO}/servier/servier/data
+  servier train --model 1 -a mlp --split -p {PATH_TO_REPO}/servier/servier/data/
   ls /tmp/models
 ```
 ```bash
-  servier evaluate --model 1 -p {PATH_TO_REPO}/servier/servier/data
+  servier evaluate --model 1 -p {PATH_TO_REPO}/servier/servier/data/
 ```
 
 # API and streamlit app

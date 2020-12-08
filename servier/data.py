@@ -14,7 +14,7 @@ VOCAB = ['N', '3', '\\', '4', 'o', 'C', 'H', '1', '5', 'c', '=', 's', '-', 'F', 
 EMBEDDING_VECTOR_LENGTH, MAX_LENGTH, VOCAB_SIZE = 32, 74, 29 + 1
 
 
-def get_data(kind='single', test=False, all=True, path=LOCAL_PATH, *args, **kwargs):
+def get_data(kind='single', test=False, all=False, path=LOCAL_PATH, *args, **kwargs):
     if kind == 'single':
         if test:
             file_path = path + 'dataset_single_test.csv'
