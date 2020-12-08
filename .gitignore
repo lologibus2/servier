@@ -7,5 +7,9 @@ dist/
 .ipynb_checkpoints
 *.iml
 servier/data/models/*
+servier/data/description.pdf
+servier/data/dataset_multi.csv
+servier/data/dataset_single.csv
+/models/*
 .DS_Store
 .idea/
